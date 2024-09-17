@@ -23,7 +23,10 @@ def scrape():
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Extract data (example: all links)
-    data = [link.get('href') for link in soup.find_all('a')]
+    course_numbers = []
+    for course in soup.find_all(text=True):
+        if ' - ' in course and course.split(' - ')[0].isupper():
+            course_numbers.append(course.split(' - ')[0])
 
     # Write data to Excel
     workbook = Workbook()
