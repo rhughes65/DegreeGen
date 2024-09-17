@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, render_template
 import csv
 import requests
 from bs4 import BeautifulSoup
@@ -7,9 +7,13 @@ import io
 
 app = Flask(__name__)
 
-@app.route('/scrape', methods=['GET'])
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/scrape', methods=['POST'])
 def scrape():
-    url = request.args.get('url')
+    url = request.form['url']
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
 
