@@ -1,42 +1,44 @@
 from flask import Flask, request, send_file
+import csv
 import requests
 from bs4 import BeautifulSoup
-from openpyxl import Workbook
-import os
+import pandas as pd
+import io
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return '''
-        <form action="/scrape" method="post">
-            <label for="url">Enter URL:</label>
-            <input type="text" id="url" name="url">
-            <input type="submit" value="Scrape">
-        </form>
-    '''
-
-@app.route('/scrape', methods=['POST'])
+@app.route('/scrape', methods=['GET'])
 def scrape():
-    url = request.form['url']
+    url = request.args.get('url')
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Extract data (example: all links)
-    course_numbers = []
-    for course in soup.find_all(text=True):
-        if ' - ' in course and course.split(' - ')[0].isupper():
-            course_numbers.append(course.split(' - ')[0])
+    # Extract data based on the provided HTML structure
+    classes = []
+    for row in soup.select('table.sc_courselist tbody tr'):
+        cols = row.find_all('td')
+        if len(cols) == 3:
+            class_code = cols[0].text.strip()
+            class_name = cols[1].text.strip()
+            credits = cols[2].text.strip()
+            classes.append([class_code, class_name, credits])
 
-    # Write data to Excel
-    workbook = Workbook()
-    sheet = workbook.active
-    for row, item in enumerate(data, start=1):
-        sheet.cell(row=row, column=1, value=item)
-    filename = 'output.xlsx'
-    workbook.save(filename)
+    for row in soup.select('table.sc_plangrid tbody tr'):
+        cols = row.find_all('td')
+        if len(cols) == 3:
+            class_code = cols[0].text.strip()
+            class_name = cols[1].text.strip()
+            credits = cols[2].text.strip()
+            classes.append([class_code, class_name, credits])
 
-    return send_file(filename, as_attachment=True)
+    # Generate CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Class Code', 'Class Name', 'Credits'])
+    writer.writerows(classes)
+    output.seek(0)
+
+    return send_file(io.BytesIO(output.getvalue().encode()), mimetype='text/csv', as_attachment=True, download_name='classes.csv')
 
 if __name__ == '__main__':
     app.run(debug=True)
